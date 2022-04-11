@@ -21,26 +21,28 @@ def start(update, context):
 
 def send_message(update, context):
     voice = context.bot.get_file(update.message.voice.file_id)
-    voice.download('file.ogg')
+    voice.download(f'{update.message.chat_id}.ogg')
     recognizer = sr.Recognizer()
-    src_filename = 'file.ogg'
-    dest_filename = 'output.wav'
+    src_filename = f'{update.message.chat_id}.ogg'
+    dest_filename = f'{update.message.chat_id}.wav'
 
     process = subprocess.run(['ffmpeg', '-i', src_filename, dest_filename])
     if process.returncode != 0:
         raise Exception('Something went wrong')
+    try:
+        user_audio_file = sr.AudioFile(f'{update.message.chat_id}.wav')
+        with user_audio_file as source:
+            user_audio = recognizer.record(source)
+        text = recognizer.recognize_google(user_audio, language='ru-ru')
 
-    user_audio_file = sr.AudioFile('output.wav')
-    with user_audio_file as source:
-        user_audio = recognizer.record(source)
-    text = recognizer.recognize_google(user_audio, language='ru-ru')
-
-    update.message.reply_text(
-        text
-    )
-
-    os.unlink('file.ogg')
-    os.unlink('output.wav')
+        update.message.reply_text(
+            text
+        )
+    except Exception as e:
+        print(e)
+    finally:
+        os.unlink(f'{update.message.chat_id}.ogg')
+        os.unlink(f'{update.message.chat_id}.wav')
 
     return BotStates.HANDLE_MESSAGE
 
